@@ -1,45 +1,49 @@
 <script lang="ts">
+	import GarbageBin from '$lib/components/icons/GarbageBin.svelte';
+	import { formatFileSize } from '$lib/utils';
+	import dayjs from 'dayjs';
 	import { createEventDispatcher } from 'svelte';
+
+	const formatTimestamp = (timestamp: number) => {
+		if (!timestamp) return '-';
+		return dayjs.unix(timestamp).format('YYYY-MM-DD HH:mm');
+	};
+
 	const dispatch = createEventDispatcher();
 
-	import FileItem from '$lib/components/common/FileItem.svelte';
-
-	export let selectedFileId = null;
-	export let files = [];
+	export let selectedFileId: string | null = null;
+	export let files: any[] = [];
 
 	export let small = false;
 </script>
 
-<div class=" max-h-full flex flex-col w-full">
+<!-- 文件行 -->
+<div class="max-h-full flex flex-col w-full divide-y divide-gray-50 dark:divide-gray-850">
 	{#each files as file}
-		<div class="mt-1 px-2">
-			<FileItem
-				className="w-full"
-				colorClassName="{selectedFileId === file.id
-					? ' bg-gray-50 dark:bg-gray-850'
-					: 'bg-transparent'} hover:bg-gray-50 dark:hover:bg-gray-850 transition"
-				{small}
-				item={file}
-				name={file?.name ?? file?.meta?.name}
-				type="file"
-				size={file?.size ?? file?.meta?.size ?? ''}
-				loading={file.status === 'uploading'}
-				dismissible
-				on:click={() => {
-					if (file.status === 'uploading') {
-						return;
-					}
+		<div
+			class="w-full px-2 py-1 text-xs hover:bg-gray-50 dark:hover:bg-gray-850 grid gap-2 items-center {selectedFileId === file.id ? 'bg-gray-50 dark:bg-gray-850' : ''}"
+			style="grid-template-columns:2fr 1.2fr 1fr auto;"
+		>
+			<!-- 文件信息点击区域 -->
+			<button
+				type="button"
+				class="col-span-3 grid grid-cols-3 text-left items-center gap-2 w-full"
+				style="grid-template-columns:2fr 1.2fr 1fr;"
+				on:click={() => dispatch('click', file.id)}
+			>
+				<div class="truncate">{file?.meta?.name ?? file?.name}</div>
+				<div>{formatTimestamp(file.created_at)}</div>
+				<div class="text-right">{formatFileSize(file?.meta?.size ?? file?.size ?? 0)}</div>
+			</button>
 
-					dispatch('click', file.id);
-				}}
-				on:dismiss={() => {
-					if (file.status === 'uploading') {
-						return;
-					}
-
-					dispatch('delete', file.id);
-				}}
-			/>
+			<!-- 删除按钮 -->
+			<button
+				type="button"
+				class="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10"
+				on:click|stopPropagation={() => dispatch('delete', file.id)}
+			>
+				<GarbageBin className="size-3.5 text-gray-500 hover:text-red-500" />
+			</button>
 		</div>
 	{/each}
 </div>

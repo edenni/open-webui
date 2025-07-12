@@ -1,10 +1,10 @@
+import json
 import logging
 import os
 import uuid
-import json
 from fnmatch import fnmatch
 from pathlib import Path
-from typing import Optional
+from typing import Dict, List, Optional
 from urllib.parse import quote
 
 from fastapi import (
@@ -13,16 +13,14 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Query,
     Request,
     UploadFile,
     status,
-    Query,
 )
 from fastapi.responses import FileResponse, StreamingResponse
 from open_webui.constants import ERROR_MESSAGES
 from open_webui.env import SRC_LOG_LEVELS
-
-from open_webui.models.users import Users
 from open_webui.models.files import (
     FileForm,
     FileModel,
@@ -30,10 +28,11 @@ from open_webui.models.files import (
     Files,
 )
 from open_webui.models.knowledge import Knowledges
-
+from open_webui.models.users import Users
+from open_webui.retrieval.vector.factory import VECTOR_DB_CLIENT
+from open_webui.routers.audio import transcribe
 from open_webui.routers.knowledge import get_knowledge, get_knowledge_list
 from open_webui.routers.retrieval import ProcessFileForm, process_file
-from open_webui.routers.audio import transcribe
 from open_webui.storage.provider import Storage
 from open_webui.utils.auth import get_admin_user, get_verified_user
 from pydantic import BaseModel
@@ -626,3 +625,56 @@ async def delete_file_by_id(id: str, user=Depends(get_verified_user)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=ERROR_MESSAGES.NOT_FOUND,
         )
+
+
+############################
+# Get File Chunks
+############################
+
+
+class FileChunkResponse(BaseModel):
+    index: int
+    content: str
+    metadata: Optional[dict] = None
+
+
+@router.get("/{id}/chunks", response_model=List[FileChunkResponse])
+async def get_file_chunks_by_id(id: str, user=Depends(get_verified_user)):
+    """返回指定文件在向量数据库中的所有文本分块内容。"""
+
+    # 1. 校验文件是否存在
+    file = Files.get_file_by_id(id)
+    if not file:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=ERROR_MESSAGES.NOT_FOUND,
+        )
+
+    # 2. 权限校验：拥有者 / admin / 通过知识库获得读权限
+    if file.user_id != user.id and user.role != "admin":
+        if not has_access_to_file(id, "read", user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=ERROR_MESSAGES.ACCESS_PROHIBITED,
+            )
+
+    # 3. 从向量数据库检索该文件所有 chunk
+    collection_name = f"file-{id}"
+
+    result = VECTOR_DB_CLIENT.get(collection_name=collection_name)
+    if result is None or result.documents is None:
+        # 如果不存在分块，则返回空列表
+        return []
+
+    chunks: List[FileChunkResponse] = []
+
+    documents = result.documents[0] if len(result.documents) > 0 else []
+    metadatas = (
+        result.metadatas[0] if result.metadatas and len(result.metadatas) > 0 else []
+    )
+
+    for idx, content in enumerate(documents):
+        meta = metadatas[idx] if idx < len(metadatas) else None
+        chunks.append(FileChunkResponse(index=idx, content=content, metadata=meta))
+
+    return chunks

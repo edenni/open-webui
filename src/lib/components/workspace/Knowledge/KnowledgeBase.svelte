@@ -2,32 +2,29 @@
 	import Fuse from 'fuse.js';
 	import { toast } from 'svelte-sonner';
 	import { v4 as uuidv4 } from 'uuid';
-	import { PaneGroup, Pane, PaneResizer } from 'paneforge';
 
-	import { onMount, getContext, onDestroy, tick } from 'svelte';
+	import { getContext, onDestroy, onMount } from 'svelte';
 	const i18n = getContext('i18n');
 
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import {
-		mobile,
-		showSidebar,
 		knowledge as _knowledge,
 		config,
-		user,
-		settings
+		settings,
+		showSidebar,
+		user
 	} from '$lib/stores';
 
 	import {
+		getFileById,
 		updateFileDataContentById,
-		uploadFile,
-		deleteFileById,
-		getFileById
+		uploadFile
 	} from '$lib/apis/files';
 	import {
 		addFileToKnowledgeById,
-		getKnowledgeById,
 		getKnowledgeBases,
+		getKnowledgeById,
 		removeFileFromKnowledgeById,
 		resetKnowledgeById,
 		updateFileFromKnowledgeById,
@@ -35,19 +32,18 @@
 	} from '$lib/apis/knowledge';
 	import { blobToFile } from '$lib/utils';
 
+	import AddFilesPlaceholder from '$lib/components/AddFilesPlaceholder.svelte';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import Files from './KnowledgeBase/Files.svelte';
-	import AddFilesPlaceholder from '$lib/components/AddFilesPlaceholder.svelte';
 
 	import AddContentMenu from './KnowledgeBase/AddContentMenu.svelte';
 	import AddTextContentModal from './KnowledgeBase/AddTextContentModal.svelte';
 
-	import SyncConfirmDialog from '../../common/ConfirmDialog.svelte';
-	import RichTextInput from '$lib/components/common/RichTextInput.svelte';
-	import EllipsisVertical from '$lib/components/icons/EllipsisVertical.svelte';
 	import Drawer from '$lib/components/common/Drawer.svelte';
+	import RichTextInput from '$lib/components/common/RichTextInput.svelte';
 	import ChevronLeft from '$lib/components/icons/ChevronLeft.svelte';
 	import LockClosed from '$lib/components/icons/LockClosed.svelte';
+	import SyncConfirmDialog from '../../common/ConfirmDialog.svelte';
 	import AccessControlModal from '../common/AccessControlModal.svelte';
 
 	let largeScreen = true;
@@ -732,7 +728,7 @@
 
 		<div class="flex flex-row flex-1 h-full max-h-full pb-2.5 gap-3">
 			{#if largeScreen}
-				<div class="flex-1 flex justify-start w-full h-full max-h-full">
+				<div class="flex-1 flex justify-start w-full h-full max_h_full hidden">
 					{#if selectedFile}
 						<div class=" flex flex-col w-full h-full max-h-full">
 							<div class="shrink-0 mb-2 flex items-center">
@@ -847,7 +843,7 @@
 			{/if}
 
 			<div
-				class="{largeScreen ? 'shrink-0 w-72 max-w-72' : 'flex-1'}
+				class="flex-1
 			flex
 			py-2
 			rounded-2xl
@@ -907,14 +903,10 @@
 								<Files
 									small
 									files={filteredItems}
-									{selectedFileId}
 									on:click={(e) => {
-										selectedFileId = selectedFileId === e.detail ? null : e.detail;
+										goto(`/workspace/knowledge/${id}/file/${e.detail}`);
 									}}
 									on:delete={(e) => {
-										console.log(e.detail);
-
-										selectedFileId = null;
 										deleteFileHandler(e.detail);
 									}}
 								/>
