@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { getFileChunksById } from '$lib/apis/files';
+	import ChevronLeft from '$lib/components/icons/ChevronLeft.svelte';
 	import { onMount } from 'svelte';
 	import { get, writable } from 'svelte/store';
 
@@ -30,7 +31,12 @@
 	</div>
 {:else}
 	<div class="flex flex-col w-full p-4 space-y-2">
-		<h1 class="text-xl font-semibold">文件分块</h1>
+		<div class="flex items-center gap-2">
+			<button type="button" class="p-1.5 rounded hover:bg-gray-50 dark:hover:bg-gray-850" on:click={() => history.back()}>
+				<ChevronLeft strokeWidth="2.5" className="size-4" />
+			</button>
+			<h1 class="text-xl font-semibold">文件分块</h1>
+		</div>
 		{#if $chunks.length === 0}
 			<div class="text-sm text-gray-500">暂无分块数据</div>
 		{:else}
