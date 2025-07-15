@@ -1,8 +1,11 @@
 <script lang="ts">
 	import GarbageBin from '$lib/components/icons/GarbageBin.svelte';
+	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import { formatFileSize } from '$lib/utils';
 	import dayjs from 'dayjs';
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, getContext } from 'svelte';
+
+	const i18n = getContext('i18n');
 
 	const formatTimestamp = (timestamp: number) => {
 		if (!timestamp) return '-';
@@ -39,6 +42,33 @@
 	export let selectedFileId: string | null = null;
 	export let files: any[] = [];
 	export let small = false;
+
+	let showDeleteConfirm = false;
+	let pendingDeleteFileId: string | null = null;
+	let pendingDeleteFilename: string = '';
+
+	const handleDeleteClick = (file: any) => {
+		pendingDeleteFileId = file.id;
+		pendingDeleteFilename = file?.meta?.name ?? file?.name ?? 'Untitled';
+		showDeleteConfirm = true;
+	};
+
+	const confirmDelete = () => {
+		if (pendingDeleteFileId) {
+			dispatch('delete', pendingDeleteFileId);
+			resetDeleteState();
+		}
+	};
+
+	const cancelDelete = () => {
+		resetDeleteState();
+	};
+
+	const resetDeleteState = () => {
+		showDeleteConfirm = false;
+		pendingDeleteFileId = null;
+		pendingDeleteFilename = '';
+	};
 </script>
 
 <!-- Improved File List -->
@@ -91,7 +121,7 @@
 				type="button"
 				class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-red-500"
 				title="Delete file"
-				on:click|stopPropagation={() => dispatch('delete', file.id)}
+				on:click|stopPropagation={() => handleDeleteClick(file)}
 			>
 				<GarbageBin className="size-4 text-gray-400 hover:text-red-600 dark:hover:text-red-400" />
 			</button>
@@ -103,3 +133,11 @@
 		</div>
 	{/each}
 </div>
+
+<!-- Delete Confirmation Dialog -->
+<ConfirmDialog
+	bind:show={showDeleteConfirm}
+	message={$i18n.t('Are you sure you want to delete "{{filename}}"? This action cannot be undone.', { filename: pendingDeleteFilename })}
+	on:confirm={confirmDelete}
+	on:cancel={cancelDelete}
+/>
